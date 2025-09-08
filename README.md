@@ -2,8 +2,8 @@
 This repo holds Support Alarm service tutorial
 
 ## API
- - [Graphql API](./docs/api/graphql/support-alarms-schema.md)
- - [REST API](./docs/api/rest/api.yml)
+ - [REST API](./api/openapi.yml)
+ TODO copy latest version of api.yml, or better yet sync from actual code repo...
 
 ## Tutorial
  - [Tutorial](./tutorial/README.md)
