@@ -35,13 +35,12 @@ services:
     volumes:
      - alarms-service-data:/data/
      - ${PWD}/deployment/:/deployment
+     - ${PWD}/licenses:/edgecentral/licenses/
     environment:
       - ALARM_CONFIGS_DIR=/deployment/alarms 
       - MESSAGEBUS_SOURCES_DIR=/deployment/sources
       - WRITABLE_LOGLEVEL=INFO
       - MESSAGEBUS_SUB_TOPICS="xrt/mqtt/input"
-      #- DISABLE_API=1
-      #- DISABLE_ALARMS_SERVER=1
 
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
