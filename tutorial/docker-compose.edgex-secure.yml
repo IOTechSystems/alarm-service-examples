@@ -7,8 +7,8 @@ networks:
     driver: bridge
 
 volumes:
-  alarms-service-data:
-    name: edgex_alarms-service-data
+  alarm-service-data:
+    name: edgex_alarm-service-data
   edgex-init:
     name: edgex_edgex-init
   kuiper-connections:
@@ -40,12 +40,12 @@ volumes:
 
 services:
 
-  alarms-service:
+  alarm-service:
     command: /entrypoint.sh
     entrypoint: /edgex-init/ready_to_run_wait_install.sh
     image: ${ALARM_SERVICE_IMAGE}
-    hostname: alarms-service
-    container_name: alarms-service 
+    hostname: alarm-service
+    container_name: alarm-service 
     ports:
       - 59893:59893
       - 4840:4840
@@ -55,7 +55,7 @@ services:
     networks:
       - edgex-network
     volumes:
-      - alarms-service-data:/data/
+      - alarm-service-data:/data/
       - ${PWD}/deployment/:/deployment
       - type: bind
         source: /etc/localtime
@@ -69,8 +69,8 @@ services:
         read_only: true
         volume: {}
       - type: bind
-        source: /tmp/edgex/secrets/alarms-service
-        target: /tmp/edgex/secrets/alarms-service
+        source: /tmp/edgex/secrets/alarm-service
+        target: /tmp/edgex/secrets/alarm-service
         read_only: true
         bind:
           selinux: z
@@ -81,7 +81,7 @@ services:
       WRITABLE_LOGLEVEL: INFO
       MESSAGEBUS_SUB_TOPICS: "\"xrt/mqtt/input\""
       #- DISABLE_API=1
-      #- DISABLE_ALARMS_SERVER=1
+      #- DISABLE_ALARM_SERVER=1
 
       EDGEX_SECURITY_SECRET_STORE: "true"
       PROXY_SETUP_HOST: edgex-security-proxy-setup
@@ -1210,8 +1210,8 @@ services:
         condition: service_started
         required: true
     environment:
-      EDGEX_ADD_KNOWN_SECRETS: postgres[app-rules-engine],message-bus[app-rules-engine],message-bus[device-modbus],message-bus[alarms-service],postgres[alarms-service]
-      EDGEX_ADD_SECRETSTORE_TOKENS: "device-modbus, alarms-service"
+      EDGEX_ADD_KNOWN_SECRETS: postgres[app-rules-engine],message-bus[app-rules-engine],message-bus[device-modbus],message-bus[alarm-service],postgres[alarm-service]
+      EDGEX_ADD_SECRETSTORE_TOKENS: "device-modbus, alarm-service"
       EDGEX_GROUP: "2001"
       EDGEX_SECURITY_SECRET_STORE: "true"
       EDGEX_USER: "2002"

@@ -1,7 +1,7 @@
 name: edgex
 
 volumes:
-  alarms-service-data:
+  alarm-service-data:
     name: edgex_alarms-service-data
   db-data:
     name: edgex_db-data
@@ -20,10 +20,10 @@ networks:
 
 services:
 
-  alarms-service:
+  alarm-service:
     image: ${ALARM_SERVICE_IMAGE}
-    hostname: alarms-service
-    container_name: alarms-service 
+    hostname: alarm-service
+    container_name: alarm-service 
     ports:
       - 59893:59893
       - 4840:4840
@@ -33,15 +33,15 @@ services:
     networks:
       - edgex-network
     volumes:
-     - alarms-service-data:/data/
+     - alarm-service-data:/data/
      - ${PWD}/deployment/:/deployment
     environment:
-      - ALARM_CONFIGS_DIR=/deployment/alarms 
+      - ALARM_CONFIGS_DIR=/deployment/alarms
       - MESSAGEBUS_SOURCES_DIR=/deployment/sources
       - WRITABLE_LOGLEVEL=INFO
       - MESSAGEBUS_SUB_TOPICS="xrt/mqtt/input"
       #- DISABLE_API=1
-      #- DISABLE_ALARMS_SERVER=1
+      #- DISABLE_ALARM_SERVER=1
 
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
