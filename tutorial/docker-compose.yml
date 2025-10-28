@@ -12,6 +12,7 @@ networks:
 services:
 
   alarms-service:
+    image: ${ALARM_SERVICE_IMAGE}
     ports:
       - 4840:4840
     volumes:

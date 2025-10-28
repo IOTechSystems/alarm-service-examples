@@ -2,8 +2,8 @@
 This repo holds Support Alarm service tutorial
 
 ## API
- - [REST API](./api/openapi.yml)
- TODO copy latest version of api.yml, or better yet sync from actual code repo...
+ - [REST API](https://github.com/IOTechSystems/support-alarm/blob/main/internal/api/openapi.yaml)
+ - [SSE REST API](https://github.com/IOTechSystems/support-alarm/blob/main/internal/api/openapi.sse.yaml)
 
 ## Tutorial
  - [Tutorial](./tutorial/README.md)
