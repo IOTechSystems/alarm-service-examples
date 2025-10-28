@@ -77,7 +77,7 @@ services:
       ALARM_CONFIGS_DIR: /deployment/alarms 
       MESSAGEBUS_SOURCES_DIR: /deployment/sources
       WRITABLE_LOGLEVEL: INFO
-      MESSAGEBUS_SUB_TOPICS: "\"xrt/mqtt/input\""
+      MESSAGEBUS_SUB_TOPICS: ["xrt/mqtt/input"]
       #- DISABLE_API=1
       #- DISABLE_ALARMS_SERVER=1
 
