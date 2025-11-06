@@ -34,6 +34,7 @@ services:
       - edgex-network
     volumes:
      - alarm-service-data:/data/
+     - ${PWD}/licenses:/edgecentral/licenses/
      - ${PWD}/deployment/:/deployment
     environment:
       - ALARM_CONFIGS_DIR=/deployment/alarms
