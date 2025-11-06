@@ -26,11 +26,11 @@
   },
   "sourceAssociations" : [
     {
-      "source" : { "MessageBusSourceName" : "MyMQTTSource" },
+      "source" : { "messageBusSourceName" : "MyMQTTSource" },
       "alarms" : ["MQTTAlarm"]
     },
     {
-      "source" : { "MessageBusSourceName" : "MyEkuiperSource" },
+      "source" : { "messageBusSourceName" : "MyEkuiperSource" },
       "alarms" : ["ekuiperAlarm"]
     }
   ]
