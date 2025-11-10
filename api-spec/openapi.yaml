@@ -1,0 +1,4011 @@
+openapi: 3.0.0
+info:
+  title: Alarm Management API
+  description: |
+    API for managing and routing alarms in an industrial automation system.
+    Provides endpoints for alarm management, state transitions, routing configuration,
+    and alarm conditions.
+  version: 3.0.0
+  contact:
+    name: iotechsys
+    email: support@iotechsys.com
+servers:
+  - url: http://localhost:59893/api/v3
+    description: URL for local development and testing
+tags:
+  - name: alarms
+    description: Operations for managing alarm instances and their config
+  - name: states
+    description: Operations for managing alarm states and state transitions
+  - name: stategroups
+    description: Operations for managing groups of alarm states
+  - name: routes
+    description: Operations for configuring alarm routing rules
+  - name: actions
+    description: Operations for managing routing actions
+  - name: conditions
+    description: Operations for managing routing conditions
+  - name: templates
+    description: Operations for managing message templates
+  - name: alarmconfigs
+    description: Operations for managing alarm configurations and their settings
+  - name: tasks
+    description: Operations for managing task execution and audit logs
+paths:
+  /alarms:
+    get:
+      tags:
+        - alarms
+      summary: List alarms
+      description: |
+        Retrieve a paginated list of alarms with comprehensive filtering capabilities.
+        Supports filtering by severity, status flags, timestamps, and associated resources.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/alarmsSortBy'
+        - name: id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Filter by associated alarm ID. Special characters in the alarm ID (such as ';' and '=') must be URL encoded.
+            For example, an alarm ID 'ns=2;g=A224E58F-017D-78D1-1DF1-4FC421C29CE8' should be encoded as
+            'ns%3D2%3Bg%3DA224E58F-017D-78D1-1DF1-4FC421C29CE8'
+        - name: alarmConfigName
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated alarm configuration name
+        - name: sourceType
+          in: query
+          schema:
+            $ref: '#/components/schemas/SourceType'
+          description: Filter alarms by associated source type
+        - name: profile
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source profile
+        - name: device
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source device
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source resource
+        - name: service
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source service
+        - name: nodeId
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source nodeId
+        - name: messageBusSourceName
+          in: query
+          schema:
+            type: string
+          description: Filter alarms by associated source message bus source name
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by active state (true for active alarms, false for inactive)
+        - name: acked
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by acknowledged state (true for acknowledged, false for unacknowledged)
+        - name: confirmed
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by confirmed state (true for confirmed, false for unconfirmed)
+        - name: suppressed
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by suppressed state (true for suppressed, false for not suppressed)
+        - name: shelved
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by shelved state (true for shelved, false for not shelved)
+        - name: outOfService
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by out-of-service state (true for out-of-service, false for in-service)
+        - name: latched
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by latched state (true for latched, false for not latched)
+        - name: retain
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by retain flag (true for retained, false for not retained)
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/Severity'
+          description: Filter alarms by severity level
+        - name: hasState
+          in: query
+          schema:
+            type: boolean
+          description: Filter alarms by whether they have states (true for alarms with states, false for alarms without states)
+      responses:
+        '200':
+          description: Successfully retrieved the list of alarms
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/id/{id}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by ID
+      description: Retrieve detailed information about a specific alarm using its unique identifier
+      parameters:
+        - $ref: '#/components/parameters/alarmId'
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - alarms
+      summary: Modify alarm state
+      description: |
+        Execute state transition operations on an alarm instance.
+        Supported operations include enabling/disabling, suppressing/unsuppressing,
+        shelving/unshelving, and service-related actions.
+      parameters:
+        - $ref: '#/components/parameters/alarmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - method
+              properties:
+                method:
+                  type: string
+                  enum:
+                    - suppress
+                    - unsuppress
+                    - shelve
+                    - unshelve
+                    - reset
+                    - serviceRemove
+                    - servicePlace
+                  description: The state transition method to execute
+                parameters:
+                  type: object
+                  description: Optional method-specific parameters
+                  properties:
+                    shelvingTime:
+                      type: number
+                      format: float
+                      description: Duration in milliseconds for timed shelving (only used with shelve method)
+              example:
+                method: shelve
+                parameters:
+                  shelvingTime: 3600000
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/source/node/{sourceId}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by node source
+      description: Retrieve alarm configuration for a node source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Node source identifier
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/source/messagebus/{sourceId}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by message bus source
+      description: Retrieve alarm configuration for a message bus source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message bus source identifier
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/source/edgeXDevice/{sourceId}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by EdgeX Device source
+      description: Retrieve alarm configuration for an EdgeX Device source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message bus source identifier
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/source/edgeXProfile/{sourceId}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by EdgeX Profile source
+      description: Retrieve alarm configuration for an EdgeX Profile source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message bus source identifier
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarms/source/sparkplug/{sourceId}:
+    get:
+      tags:
+        - alarms
+      summary: Get alarm by sparkplug metric source
+      description: Retrieve alarm configuration for a sparkplug metric source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message bus source identifier
+      responses:
+        '200':
+          description: Successfully retrieved the alarm details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /states:
+    get:
+      tags:
+        - states
+      summary: List states
+      description: |
+        Retrieve a paginated list of alarm states with comprehensive filtering capabilities.
+        Supports filtering by alarm ID, severity, status flags, and timestamps.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/statesSortBy'
+        - name: alarmId
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Filter by associated alarm ID. Special characters in the alarm ID (such as ';' and '=') must be URL encoded.
+            For example, an alarm ID 'ns=2;g=A224E58F-017D-78D1-1DF1-4FC421C29CE8' should be encoded as
+            'ns%3D2%3Bg%3DA224E58F-017D-78D1-1DF1-4FC421C29CE8'
+        - name: id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Filter by the state IDs. Supports filtering with multiple IDs with ?stateId=1&stateId=2
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/Severity'
+          description: Filter states by severity level
+        - name: retain
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by retain status
+        - name: acked
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by acknowledged status
+        - name: confirmed
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by confirmed status
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by active status
+        - name: suppressed
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by suppressed status
+        - name: shelved
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by shelved status
+        - name: outOfService
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by out of service status
+        - name: latched
+          in: query
+          schema:
+            type: boolean
+          description: Filter states by latched status
+        - name: timestampStart
+          in: query
+          schema:
+            type: integer
+          description: Filter states by start timestamp (Unix timestamp in milliseconds)
+        - name: timestampEnd
+          in: query
+          schema:
+            type: integer
+          description: Filter states by end timestamp (Unix timestamp in milliseconds)
+      responses:
+        '200':
+          description: Successfully retrieved the list of states
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /states/id/{id}:
+    get:
+      tags:
+        - states
+      summary: Get state by ID
+      description: |
+        Retrieve detailed information about a specific state using it's unique identifier
+      parameters:
+         - $ref: '#/components/parameters/stateId'
+      responses:
+        '200':
+          description: Successfully retrieved the state details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/State'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - states
+      summary: Modify state
+      description: |
+        Execute state transition operations on an alarm state.
+        Currently supports acknowledging and confirming alarm states.
+      parameters:
+        - $ref: '#/components/parameters/stateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - method
+              properties:
+                method:
+                  type: string
+                  enum:
+                    - acknowledge
+                    - confirm
+                  description: The state transition method to execute
+                comment:
+                  $ref: '#/components/schemas/CommentInput'
+              example:
+                method: acknowledge
+                comment:
+                  text: Acknowledged by operator John Smith
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /routes:
+    get:
+      tags:
+        - routes
+      summary: List routes
+      description: |
+        Retrieve a paginated list of routing routes with filtering capabilities.
+        Supports filtering by route ID, name, and associated condition/action IDs.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: Filter routes by route ID
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter routes by route name
+        - name: conditionId
+          in: query
+          schema:
+            type: string
+          description: Filter routes by associated condition ID
+        - name: actionId
+          in: query
+          schema:
+            type: string
+          description: Filter routes by associated action ID
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/routesSortBy'
+      responses:
+        '200':
+          description: Successfully retrieved the list of routes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - routes
+      summary: Create route
+      description: Create a new routing route with specified conditions and actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteCreateRequest'
+      responses:
+        '201':
+          description: Route created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /routes/id/{id}:
+    get:
+      tags:
+        - routes
+      summary: Get route by ID
+      description: |
+        Retrieve detailed information about a route from it's ID
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+          description: Unique identifier of the route
+      responses:
+        '200':
+          description: Successfully retrieved route details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - routes
+      summary: Update route
+      description: Update an existing routing route configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Route ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteUpdateRequest'
+      responses:
+        '200':
+          description: Route updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - routes
+      summary: Delete route
+      description: Delete an routing route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Route ID
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /routes/id/{id}/actions/id/{actionId}:
+    post:
+      tags:
+        - routes
+      summary: Associate action with route
+      description: Associate an action with a route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Route ID
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Action ID
+      responses:
+        '200':
+          description: Action associated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - routes
+      summary: Dissociate action from route
+      description: Remove an action's association with a route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Route ID
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Action ID
+      responses:
+        '200':
+          description: Action dissociated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /actions:
+    get:
+      tags:
+        - actions
+      summary: List actions
+      description: |
+        Retrieve a paginated list of routing actions with filtering capabilities.
+        Supports filtering by action ID, name, and type.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: Filter actions by action ID
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter actions by action name
+        - name: type
+          in: query
+          schema:
+            type: string
+          description: Filter actions by action type
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/actionsSortBy'
+      responses:
+        '200':
+          description: Successfully retrieved the list of actions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - actions
+      summary: Create action
+      description: Create a new routing action with specified configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionCreateRequest'
+      responses:
+        '201':
+          description: Action created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /actions/id/{id}:
+    get:
+      tags:
+        - actions
+      summary: Get an action by ID
+      description: |
+        Retrieve detailed information about an action from it's ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: FUnique identifier for the action
+      responses:
+        '200':
+          description: Successfully retrieved action details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Action'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - actions
+      summary: Update action
+      description: Update an existing routing action's configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Action ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionUpdateRequest'
+      responses:
+        '200':
+          description: Action updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - actions
+      summary: Delete action
+      description: Delete an routing action
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Action ID
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /actions/id/{id}/test:
+    post:
+      tags:
+        - actions
+      summary: Test an action
+      description: Trigger an action without an alarm to test it's functionality
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Action ID
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /conditions:
+    get:
+      tags:
+        - conditions
+      summary: List conditions
+      description: |
+        Retrieve a paginated list of routing conditions with filtering capabilities.
+        Supports filtering by condition ID, name, and type.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: Filter conditions by condition ID
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter conditions by condition name
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/conditionsSortBy'
+      responses:
+        '200':
+          description: Successfully retrieved the list of conditions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConditionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - conditions
+      summary: Create condition
+      description: Create a new routing condition with specified configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionCreateRequest'
+      responses:
+        '201':
+          description: Condition created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConditionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /conditions/id/{id}:
+    get:
+      tags:
+        - conditions
+      summary: Get condition by ID
+      description: |
+        Retrieve detailed information about a condition from it's ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the condition
+      responses:
+        '200':
+          description: Successfully retrieved the condition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - conditions
+      summary: Update condition
+      description: Update an existing routing condition's configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Condition ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionUpdateRequest'
+      responses:
+        '200':
+          description: Condition updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConditionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - conditions
+      summary: Delete routing condition
+      description: Delete an routing condition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Condition ID
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tasks/history:
+    get:
+      tags:
+        - tasks
+      summary: Get task audit logs
+      description: |
+        Retrieve audit logs for task manager operations.
+        Returns a paginated list of task history records showing status changes,
+        worker assignments, and error messages.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - name: taskId
+          in: query
+          schema:
+            type: string
+          description: Filter by specific task ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - scheduled
+              - pending
+              - processing
+              - completed
+              - failed
+              - cancelled
+          description: Filter by task status
+        - name: workerId
+          in: query
+          schema:
+            type: string
+          description: Filter by worker ID
+        - name: timestampStart
+          in: query
+          schema:
+            type: integer
+          description: Filter by start timestamp (Unix timestamp in milliseconds)
+        - name: timestampEnd
+          in: query
+          schema:
+            type: integer
+          description: Filter by end timestamp (Unix timestamp in milliseconds)
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum:
+              - created_at
+              - -created_at
+              - status
+              - -status
+            default: -created_at
+          description: Sort order for results
+      responses:
+        '200':
+          description: Successfully retrieved task audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskHistoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /stategroups:
+    get:
+      tags:
+        - stategroups
+      summary: List state groups
+      description: |
+        Retrieve a paginated list of alarm state groups with comprehensive filtering capabilities.
+        Supports filtering by severity, status flags, timestamps, and associated resources.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/stateGroupsSortBy'
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/Severity'
+          description: Filter state groups by severity level
+        - name: retain
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by retain status
+        - name: acked
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by acknowledged status
+        - name: confirmed
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by confirmed status
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by active status
+        - name: suppressed
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by suppressed status
+        - name: shelved
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by shelved status
+        - name: outOfService
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by out of service status
+        - name: latched
+          in: query
+          schema:
+            type: boolean
+          description: Filter state groups by latched status
+        - name: timestampStart
+          in: query
+          schema:
+            type: integer
+          description: Filter state groups by start timestamp (Unix timestamp in milliseconds)
+        - name: timestampEnd
+          in: query
+          schema:
+            type: integer
+          description: Filter state groups by end timestamp (Unix timestamp in milliseconds)
+        - name: device
+          in: query
+          schema:
+            type: string
+          description: Filter state groups by associated device name
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Filter state groups by associated resource name
+      responses:
+        '200':
+          description: Successfully retrieved the list of state groups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateGroupsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarmConfigs:
+    get:
+      tags:
+        - alarmconfigs
+      summary: List alarm configurations
+      description: |
+        Retrieve a paginated list of all available alarm configurations.
+        Supports filtering by alarm type.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/alarmConfigsSortBy'
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter configurations by name
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlarmConfigurationType'
+          description: Filter configurations by type
+      responses:
+        '200':
+          description: Successfully retrieved the list of alarm configurations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmConfigsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /alarmConfigs/configName/{configName}:
+    parameters:
+      - name: configName
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Name of the alarm configuration
+    get:
+      tags:
+        - alarmconfigs
+      summary: Get alarm configuration
+      description: Retrieve a specific alarm configuration by name
+      responses:
+        '200':
+          description: Successfully retrieved the alarm configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmConfiguration'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - alarmconfigs
+      summary: Delete alarm configuration
+      description: Remove an alarm configuration by name
+      responses:
+        '204':
+          description: Alarm configuration successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - alarmconfigs
+      summary: Create alarm configuration
+      description: Create a new alarm configuration with the specified name and configuration parameters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlarmConfiguration'
+      responses:
+        '201':
+          description: Alarm configuration successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmConfiguration'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - alarmconfigs
+      summary: Update alarm configuration
+      description: Update a new alarm configuration using it's name and configuration parameters to change
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlarmConfiguration'
+      responses:
+        '200':
+          description: Alarm configuration successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmConfiguration'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs:
+    get:
+      tags:
+        - alarmconfigs
+      summary: List alarm associations
+      description: |
+        Retrieve a paginated list of alarm associations with comprehensive filtering capabilities.
+        Supports filtering by source type, device, profile, resource, and alarm configuration.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - name: sourceType
+          in: query
+          schema:
+            $ref: '#/components/schemas/SourceType'
+          description: Filter associations by source type
+        - name: device
+          in: query
+          schema:
+            type: string
+          description: Filter associations by profile name
+        - name: profile
+          in: query
+          schema:
+            type: string
+          description: Filter associations by device name
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Filter associations by resource name
+        - name: messageBusSourceName
+          in: query
+          schema:
+            type: string
+          description: Filter associations by message bus source name
+        - name: alarmConfig
+          in: query
+          schema:
+            type: string
+          description: Filter associations by alarm configuration name
+        - name: alarmType
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlarmConfigurationType'
+          description: Filter associations by alarm type
+      responses:
+        '200':
+          description: Successfully retrieved the list of alarm associations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlarmInstance'
+                  pagination:
+                    type: object
+                    properties:
+                      offset:
+                        type: integer
+                        description: Current offset in the result set
+                      limit:
+                        type: integer
+                        description: Maximum number of items per page
+                      count:
+                        type: integer
+                        description: Total number of items
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - alarmconfigs
+      summary: Create alarm configuration
+      description: Create a new alarm association between a data source and an alarm configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigSource'
+      responses:
+        '201':
+          description: Alarm configuration successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmInstance'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs/source/opc-ua/nodeid/{nodeid}/configName/{configName}:
+    delete:
+      parameters:
+        - name: nodeid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the OPC-UA node
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Delete alarm association
+      description: |
+        Remove an existing alarm association between a data source and its alarm configurations.
+        This will stop monitoring the source for the specified alarm configurations.
+      responses:
+        '204':
+          description: Alarm association successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs/source/messagebus/name/{messageBusSourceName}/configName/{configName}:
+    post:
+      parameters:
+        - name: messageBusSourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the MessageBus source
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Create alarm association
+      description: |
+        Create a new alarm association between a MessageBus source and an alarm configuration.
+        This will start monitoring the MessageBus source for the specified alarm configuration.
+      responses:
+        '201':
+          description: Alarm association successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "created"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Association already exists
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      parameters:
+        - name: messageBusSourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the message bus source
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Delete alarm association
+      description: |
+        Remove an existing alarm association between a data source and its alarm configurations.
+      responses:
+        '204':
+          description: Alarm association successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs/source/edgex/device/{deviceName}/resource/{resourceName}/configName/{configName}:
+    post:
+      parameters:
+        - name: deviceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the EdgeX device
+        - name: resourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the resource
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Create alarm association
+      description: |
+        Create a new alarm association between an EdgeX device resource and an alarm configuration.
+        This will start monitoring the device resource for the specified alarm configuration.
+      responses:
+        '201':
+          description: Alarm association successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "created"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Association already exists
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      parameters:
+        - name: deviceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the EdgeX device
+        - name: resourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the resource
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Delete alarm association
+      description: |
+        Remove an existing alarm association between a data source and its alarm configurations.
+        This will stop monitoring the source for the specified alarm configurations.
+      responses:
+        '204':
+          description: Alarm association successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs/source/edgex/profile/{profileName}/resource/{resourceName}/configName/{configName}:
+    post:
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the EdgeX profile
+        - name: resourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the resource
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Create alarm association
+      description: |
+        Create a new alarm association between an EdgeX profile resource and an alarm configuration.
+        This will start monitoring the profile resource for the specified alarm configuration.
+      responses:
+        '201':
+          description: Alarm association successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "created"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Association already exists
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the EdgeX device
+        - name: resourceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the resource
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Delete alarm association
+      description: |
+        Remove an existing alarm association between a data source and its alarm configurations.
+        This will stop monitoring the source for the specified alarm configurations.
+      responses:
+        '204':
+          description: Alarm association successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /associations/alarmConfigs/source/sparkplug/data/{data}/configName/{configName}:
+    delete:
+      parameters:
+        - name: data
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Data for the Sparkplug source TBD
+        - name: configName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the alarm configuration
+      tags:
+        - alarmconfigs
+      summary: Delete alarm association
+      description: |
+        Remove an existing alarm association between a data source and its alarm configurations.
+        This will stop monitoring the source for the specified alarm configurations.
+      responses:
+        '204':
+          description: Alarm association successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /ping:
+    get:
+      tags:
+        - misc
+      summary: Health check
+      description: |
+        Perform a health check of the alarm management service.
+        Returns the current API version, server timestamp, and service name.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /templates:
+    get:
+      tags:
+        - templates
+      summary: List templates
+      description: |
+        Retrieve a paginated list of message templates with filtering capabilities.
+        Supports filtering by template ID, name, and type.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: Filter templates by template ID
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter templates by template name
+        - name: type
+          in: query
+          schema:
+             $ref: '#/components/schemas/ActionType'
+          description: Filter templates by template type
+        - name: isDefault
+          in: query
+          schema:
+            type: boolean
+          description: Filter templates by default status
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip in the result set
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of items to return
+        - $ref: '#/components/parameters/templatesSortBy'
+      responses:
+        '200':
+          description: Successfully retrieved the list of templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - templates
+      summary: Create template
+      description: Create a new message template with specified configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateCreateRequest'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /templates/id/{id}:
+    get:
+      tags:
+        - templates
+      summary: Get template by ID
+      description: Retrieve detailed information about a specific template using its unique identifier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Template ID
+      responses:
+        '200':
+          description: Successfully retrieved the template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - templates
+      summary: Update template
+      description: Update an existing message template's configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Template ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateUpdateRequest'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - templates
+      summary: Delete template
+      description: Deletes a template by ID. Cannot delete default templates or templates in use by actions.
+      operationId: deleteTemplatesIdId
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Template cannot be deleted (default or in use)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /templates/reload:
+      post:
+        tags:
+          - templates
+        summary: Reload default templates
+        description: Reloads default templates from configuration file
+        operationId: postTemplatesReload
+        responses:
+          '200':
+            description: Templates reloaded successfully
+          '500':
+            description: Internal server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    alarmsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort alarms by. Use prefix '-' for descending order.
+        Example: 'alarmConfigName' for ascending, '-alarmConfigName' for descending.
+
+        Available fields:
+        * alarmConfigName
+        * sourceType
+      examples:
+        ascDevice:
+          value: alarmConfigName
+          summary: Sort by alarm config name ascending
+        descDevice:
+          value: -alarmConfigName
+          summary: Sort by alarm config name name descending
+    statesSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort states by. Use prefix '-' for descending order.
+        Example: 'severity' for ascending, '-severity' for descending.
+
+        Available fields:
+        * severity
+        * comment
+        * retain
+        * acked
+        * confirmed
+        * active
+        * suppressed
+        * shelved
+        * outOfService
+        * latched
+        * timestamp
+        * userId (Not yet implemented)
+        * status (Not yet implemented)
+        * tsCreated
+      examples:
+        ascSeverity:
+          value: severity
+          summary: Sort by severity ascending
+        descTimestamp:
+          value: -timestamp
+          summary: Sort by timestamp descending
+    stateGroupsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort state groups by. Use prefix '-' for descending order.
+
+        Available fields:
+        * tsCreated
+        * tsModified
+      examples:
+        ascCreated:
+          value: tsCreated
+          summary: Sort by creation time ascending
+    conditionsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort conditions by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+    actionsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort actions by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * description
+        * type
+        * enableStatus
+        * stopConditionType
+        * duration
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+        descType:
+          value: -type
+          summary: Sort by action type descending
+    alarmConfigsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort alarm configs by. Use prefix '-' for descending order.
+        Example: 'name' for ascending, '-name' for descending.
+
+        Available fields:
+        * name
+        * sourceType
+      examples:
+        ascDevice:
+          value: name
+          summary: Sort by alarm config name ascending
+        descDevice:
+          value: -name
+          summary: Sort by alarm config name name descending
+    templatesSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort templates by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * type
+        * isDefault
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+        descType:
+          value: -type
+          summary: Sort by template type descending
+    routesSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort routes by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * description
+        * delay
+        * retries
+        * enableStatus
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+        descDelay:
+          value: -delay
+          summary: Sort by delay descending
+    alarmId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the alarm
+    stateId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the state
+  responses:
+    Success:
+      description: Operation completed successfully
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BaseResponse'
+    BadRequest:
+      description: Invalid request parameters or validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication credentials are missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Not enough permissions to perform the requested operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InvalidStateTransition:
+      description: Invalid state transition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error occurred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Request conflicts with the current state of the target resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    BaseResponse:
+      type: object
+      properties:
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+    AlarmsResponse:
+      type: object
+      properties:
+        alarms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alarm'
+        metadata:
+          type: object
+          properties:
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    StatesResponse:
+      type: object
+      properties:
+        states:
+          type: array
+          items:
+            $ref: '#/components/schemas/State'
+        metadata:
+          type: object
+          properties:
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    StateGroupsResponse:
+      type: object
+      properties:
+        stateGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/StateGroup'
+        metadata:
+          type: object
+          properties:
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    AlarmConfigsResponse:
+      type: object
+      properties:
+        alarmConfigs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlarmConfigurationWithName'
+        metadata:
+          type: object
+          properties:
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    State:
+      type: object
+      description: Represents the state of an alarm
+      properties:
+        id:
+          type: string
+        alarmId:
+          type: string
+        severity:
+          $ref: '#/components/schemas/Severity'
+        comment:
+          type: string
+          description: Optional comment associated with this state
+        retain:
+          type: boolean
+          description: Indicates if the state requires attention
+        acked:
+          type: boolean
+          description: Indicates if the alarm has been acknowledged
+        confirmed:
+          type: boolean
+          description: Indicates if corrective action has been taken
+        active:
+          type: boolean
+          description: Indicates if the alarm condition is currently active
+        suppressed:
+          type: boolean
+          description: Indicates if the alarm is suppressed
+        shelved:
+          type: boolean
+          description: Indicates if the alarm is shelved
+        outOfService:
+          type: boolean
+          description: Indicates if the alarm is in maintenance
+        latched:
+          type: boolean
+          description: Indicates if the alarm requires additional processing
+        timestamp:
+          type: string
+          description: Alarm State timestamp (RFC3339 format)
+        userId:
+          type: string
+          description: ID of the user who caused the state change. Not currently in use; planned for future implementation.
+        status:
+          type: integer
+          description: Status code of the alarm state. Not currently in use; planned for future implementation.
+        tsCreated:
+          type: string
+          description: Creation timestamp (RFC3339 format)
+        description:
+          type: string
+    Alarm:
+      type: object
+      description: Represents an alarm configuration
+      properties:
+        id:
+          type: string
+        config:
+          type: string
+        source:
+          type: object
+        alarmConfigName:
+          type: string
+          description: Name of the alarm configuration associated with this instance
+        sourceType:
+          $ref: '#/components/schemas/SourceType'
+        currentStateId:
+          type: string
+          description: ID of the current state for this alarm instance
+    StateGroup:
+      type: object
+      description: Represents a lifecycle of states from active to inactive
+      properties:
+        id:
+          type: string
+        alarmId:
+          type: string
+        stateIds:
+          type: array
+          items:
+            type: string
+        initialState:
+          $ref: '#/components/schemas/State'
+        currentState:
+          $ref: '#/components/schemas/State'
+        complete:
+          type: boolean
+          description: Whether this group is historical
+        duration:
+          type: number
+          format: float
+          description: Duration from active to inactive state
+        triggeredValue:
+          type: object
+          description: Process value information that triggered the alarm, including the actual value, data type, encoding details
+          properties:
+            value:
+              description: The actual process value that triggered the alarm
+              oneOf:
+                - type: number
+                - type: string
+                - type: boolean
+                - type: object
+            type:
+              type: string
+              description: Human-readable data type (e.g., "Double", "Boolean", "String")
+          example:
+            value: 42.5
+            type: "Double"
+        highestSeverity:
+          type: string
+          description: Highest severity any state within the group reaches
+        tsCreated:
+          type: string
+          description: Creation timestamp (RFC3339 format)
+        tsModified:
+          type: string
+          description: Last modification timestamp (RFC3339 format)
+    CommentInput:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    Route:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The route ID
+        name:
+          type: string
+          description: The route name
+        description:
+          type: string
+          description: Optional description
+        condition:
+          $ref: '#/components/schemas/Condition'
+        delay:
+          type: integer
+          description: Delay time (in minutes) to wait before an alarm is routed
+        retries:
+          type: integer
+          description: The number of retries to run the action before terminated
+        schedule:
+          type: string
+          description: Schedule string (in iCalender format) for route enablement window
+        actions:
+          type: array
+          description: Array of actionIds associated with the action
+          items:
+            type: string
+        enableStatus:
+          type: boolean
+          description: Route enabled status
+        tsCreated:
+          type: string
+        tsModified:
+          type: string
+        userCreated:
+          type: string
+        userModified:
+          type: string
+        delayWindow:
+          type: integer
+          description: Time window in seconds to look back for alarm states when processing delayed routes
+          minimum: 1
+          default: 10
+        routingTriggers:
+          $ref: '#/components/schemas/RoutingTriggers'
+    RouteCreateRequest:
+      type: object
+      required:
+        - name
+        - conditionId
+        - schedule
+        - enableStatus
+      properties:
+        name:
+          type: string
+          description: The route name
+        description:
+          type: string
+          description: Optional description
+        conditionId:
+          type: string
+          description: The condition ID - single, no wildcards
+        delay:
+          type: integer
+          description: Delay time (in minutes) to wait before an alarm is routed
+        retries:
+          type: integer
+          description: The number of retries to run the action before terminated
+        schedule:
+          type: string
+          description: Schedule string (in iCalender format) to define the time window when the alarm route is enabled
+        actions:
+          description: Array of actionIds to associate with the action
+          type: array
+          items:
+            type: string
+        enableStatus:
+          type: boolean
+          description: Route enabled status
+        delayWindow:
+          type: integer
+          description: Time window in seconds to look back for alarm states when processing delayed routes
+          minimum: 1
+          default: 10
+        routingTriggers:
+          $ref: '#/components/schemas/RoutingTriggers'
+    RouteUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the route
+        description:
+          type: string
+          description: Optional description
+        conditionId:
+          type: string
+          description: ID of the condition to associate with this route
+        delay:
+          type: integer
+          description: Initial delay in minutes before routing
+          minimum: 0
+        retries:
+          type: integer
+          description: Number of retries before giving up
+          minimum: 0
+        schedule:
+          type: string
+          description: iCalendar schedule string
+        actions:
+          type: array
+          description: Array of actionIds to associate with the action (overwrites existing associations)
+          items:
+            type: string
+        enableStatus:
+          type: boolean
+          description: Whether the route is enabled
+        delayWindow:
+          type: integer
+          description: Time window in seconds to look back for alarm states when processing delayed routes
+          minimum: 1
+        routingTriggers:
+          type: object
+          description: Triggers that determine when alarms should be routed
+          properties:
+            whenAcknowledged:
+              type: boolean
+              description: Route when alarm is acknowledged
+              nullable: true
+            whenConfirmed:
+              type: boolean
+              description: Route when alarm is confirmed
+              nullable: true
+            whenActive:
+              type: boolean
+              description: Route when alarm is active
+              nullable: true
+            whenInactive:
+              type: boolean
+              description: Route when alarm is inactive
+              nullable: true
+            whenSuppressed:
+              type: boolean
+              description: Route when alarm is suppressed
+              nullable: true
+            whenShelved:
+              type: boolean
+              description: Route when alarm is shelved
+              nullable: true
+            whenOutOfService:
+              type: boolean
+              description: Route when alarm is out of service
+              nullable: true
+            whenInService:
+              type: boolean
+              description: Route when alarm is in service
+              nullable: true
+            whenUnshelved:
+              type: boolean
+              description: Route when alarm is unshelved
+              nullable: true
+            whenUnsuppressed:
+              type: boolean
+              description: Route when alarm is unsuppressed
+              nullable: true
+            whenSeverityIncreases:
+              type: boolean
+              description: Route when alarm severity increases
+              nullable: true
+            whenSeverityDecreases:
+              type: boolean
+              description: Route when alarm severity decreases
+              nullable: true
+    RoutingTriggers:
+      type: object
+      description: Routing triggers that determine when alarms should be routed
+      properties:
+        whenAcknowledged:
+          type: boolean
+          description: Route when alarm is acknowledged
+        whenConfirmed:
+          type: boolean
+          description: Route when alarm is confirmed
+        whenActive:
+          type: boolean
+          description: Route when alarm is active
+        whenInactive:
+          type: boolean
+          description: Route when alarm is inactive
+        whenSuppressed:
+          type: boolean
+          description: Route when alarm is suppressed
+        whenShelved:
+          type: boolean
+          description: Route when alarm is shelved
+        whenOutOfService:
+          type: boolean
+          description: Route when alarm is out of service
+        whenInService:
+          type: boolean
+          description: Route when alarm is in service
+        whenUnshelved:
+          type: boolean
+          description: Route when alarm is unshelved
+        whenUnsuppressed:
+          type: boolean
+          description: Route when alarm is unsuppressed
+        whenSeverityIncreases:
+          type: boolean
+          description: Route when alarm severity increases
+        whenSeverityDecreases:
+          type: boolean
+          description: Route when alarm severity decreases
+    EmailConfig:
+      type: object
+      required:
+        - Config
+        - Receivers
+        - Subject
+      properties:
+        Config:
+          type: object
+          required:
+            - Hostname
+            - Port
+            - Username
+            - Password
+            - From
+          properties:
+            Hostname:
+              type: string
+              description: SMTP server address
+            Port:
+              type: string
+              description: SMPT server port
+            Username:
+              type: string
+              description: SMTP authentication username
+            Password:
+              type: string
+              description: SMTP authentication password
+            From:
+              type: string
+              description: Sender email address
+        Receivers:
+          type: array
+          description: Array of recipient email addresses
+          items:
+            type: string
+        Subject:
+          type: string
+          description: Email subject line
+      example:
+        Config:
+          Hostname: "smtp.server.com"
+          Port: "587"
+          Username: "smtp_user"
+          Password: "smtp_pass"
+          From: "sender@domain.com"
+        Receivers: ["recipient@domain.com"]
+        Subject: "Email Subject"
+    MQTTConfig:
+      type: object
+      required:
+        - Scheme
+        - Address
+        - Port
+        - Topic
+        - QoS
+        - ClientID
+        - AutoReconnect
+        - ConnectRetry
+        - ConnectTimeout
+        - ConnectRetryInterval
+        - PublishTimeout
+        - Retain
+      properties:
+        Scheme:
+          type: string
+          description: Protocol scheme
+          enum: [ tcp, mqtt, mqtts ]
+        Address:
+          type: string
+          description: Broker address
+        Port:
+          type: string
+          description: Broker port
+        Topic:
+          type: string
+          description: MQTT topic to publish/subscribe to
+        QoS:
+          type: integer
+          description: Quality of Service level
+          enum: [ 0, 1, 2]
+        ClientID:
+          type: string
+          description: Unique identifier for the MQTT client
+        AutoReconnect:
+          type: boolean
+          description: Automaticlaly reconnect if connection lost
+        ConnectRetry:
+          type: boolean
+          description: Retry connecting on initial failure
+        ConnectTimeout:
+          type: integer
+          description: Connection timeout in seconds
+        ConnectRetryInterval:
+          type: integer
+          description: Retry interval in seconds
+        PublishTimeout:
+          type: integer
+          description: Message publish timeout in seconds
+        Username:
+          type: string
+          description: Authentication username
+        Password:
+          type: string
+          description: Authentication password
+        CaCert:
+          type: string
+          description: Base64 encoded CA Certificate
+        Cert:
+          type: string
+          description: Base64 encoded Client Certificate
+        Key:
+          type: string
+          description: Base64 encoded Client Key
+        InsecureSkipVerify:
+          type: boolean
+          description: Skip server certificate version
+      example:
+        Scheme: "mqtt"
+        Address: "localhost"
+        Port: "1883"
+        Topic: "alarm-service/test"
+        QoS: 0
+        ClientID: "alarm-service"
+        AutoReconnect: true
+        ConnectRetry: true
+        ConnectTimeout: 30
+        ConnectRetryInterval: 5
+        PublishTimeout: 5
+        Retain: false
+    TelegramConfig:
+      type: object
+      required:
+        - token
+        - chat_id
+      properties:
+        token:
+          type: string
+          description: Telegram bot API token
+        chat_id:
+          type: string
+          description: Target chat or group ID
+      example:
+        token: "123456789:ABCDefGHIjklMNOpqrsTUVwxyz"
+        chat_id: "1234567890"
+    WebhookConfig:
+      type: object
+      required:
+        - url
+        - method
+        - timeout
+      properties:
+        url:
+          type: string
+          description: Webhook URL to call
+        method:
+          type: string
+          description: REST Method to use on the url
+          enum : [ GET, POST, PUT, DELETE, PATCH ]
+        timeout:
+          type: integer
+          description: Timeout to wait for REST call
+        headers:
+          type: object
+          description: Map of header key-value pairs
+          additionalProperties:
+            type: string
+      example:
+        url: "https://hooks.slack.com/services/ABCDEFGH/1234567/abcdefg"
+        method: "POST"
+        headers:
+          Content-Type: "application/json"
+        timeout: 30
+    SMSConfig:
+      type: object
+      required:
+        - account_sid
+        - auth_token
+        - from_number
+        - to_numbers
+      properties:
+        account_sid:
+          type: string
+          description: Twilio Account SID
+        auth_token:
+          type: string
+          description: Twilio Auth Token
+        from_number:
+          type: string
+          description: Phone number that sends the message
+        to_numbers:
+          type: array
+          description: Phone numbers to receive the message
+          items:
+            type: string
+        message_prefix:
+          type: string
+          description: Prefix to all messages sent
+      example:
+        account_sid: "1234567890abcdefghIJKLMNOP"
+        auth_token: "abcdefghijklmnop123456"
+        from_number: "+441914980123"
+        to_numbers: ["+441914980678"]
+        message_prefix: "Edge Central Alarm Service :: "
+    VoiceConfig:
+      type: object
+      required:
+        - account_sid
+        - auth_token
+        - from_number
+        - to_numbers
+      properties:
+        account_sid:
+          type: string
+          description: Twilio Account SID
+        auth_token:
+          type: string
+          description: Twilio Auth Token
+        from_number:
+          type: string
+          description: Phone number that sends the message
+        to_numbers:
+          type: array
+          description: Phone numbers to receive the message
+          items:
+            type: string
+        message_prefix:
+          type: string
+          description: Prefix to all messages sent
+        voice:
+          type: string
+          description: Voice to use, "alice" if unspecified
+        language:
+          type: string
+          description: Language to use, "en-US" if unspecified
+      example:
+        account_sid: "1234567890abcdefghIJKLMNOP"
+        auth_token: "abcdefghijklmnop123456"
+        from_number: "+441914980123"
+        to_numbers: ["+441914980678"]
+        message_prefix: "Edge Central Alarm Service :: "
+    Action:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/ActionType'
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/EmailConfig'
+            - $ref: '#/components/schemas/MQTTConfig'
+            - $ref: '#/components/schemas/TelegramConfig'
+            - $ref: '#/components/schemas/WebhookConfig'
+            - $ref: '#/components/schemas/SMSConfig'
+            - $ref: '#/components/schemas/VoiceConfig'
+        enableStatus:
+          type: boolean
+        batchEnabled:
+          type: boolean
+          description: Whether batching is enabled for this action
+        batchSize:
+          type: integer
+          description: Maximum number of messages to batch before sending
+        batchTimeoutSeconds:
+          type: integer
+          description: Maximum time in seconds to wait before sending a batch
+        maxRetries:
+          type: integer
+          description: Maximum number of retry attempts for failed action executions
+          default: 3
+        retryDelaySeconds:
+          type: integer
+          description: Delay in seconds between retry attempts (base delay for exponential backoff)
+          default: 5
+        maxRetryDelaySeconds:
+          type: integer
+          description: Maximum delay in seconds between retry attempts (caps exponential backoff)
+          default: 60
+        templateId:
+          type: string
+          description: ID of the template assigned to this action
+        tsCreated:
+          type: string
+        tsModified:
+          type: string
+        userCreated:
+          type: string
+        userModified:
+          type: string
+    ActionType:
+      type: string
+      enum:
+        - EMAIL
+        - MQTT
+        - TELEGRAM
+        - WEBHOOK
+        - SMS
+        - VOICE
+    ActionCreateRequest:
+      type: object
+      description: Create request body for Action endpoints
+      discriminator:
+        propertyName: type
+        mapping:
+          EMAIL: '#/components/schemas/ActionCreateRequestEMAIL'
+          MQTT: '#/components/schemas/ActionCreateRequestMQTT'
+          SMS: '#/components/schemas/ActionCreateRequestSMS'
+          TELEGRAM: '#/components/schemas/ActionCreateRequestTELEGRAM'
+          VOICE: '#/components/schemas/ActionCreateRequestVOICE'
+          WEBHOOK: '#/components/schemas/ActionCreateRequestWEBHOOK'
+      oneOf:
+        - $ref: '#/components/schemas/ActionCreateRequestEMAIL'
+        - $ref: '#/components/schemas/ActionCreateRequestMQTT'
+        - $ref: '#/components/schemas/ActionCreateRequestSMS'
+        - $ref: '#/components/schemas/ActionCreateRequestTELEGRAM'
+        - $ref: '#/components/schemas/ActionCreateRequestVOICE'
+        - $ref: '#/components/schemas/ActionCreateRequestWEBHOOK'
+    ActionUpdateRequest:
+      type: object
+      description: Update request body for Action endpoints
+      discriminator:
+        propertyName: type
+        mapping:
+          EMAIL: '#/components/schemas/ActionUpdateRequestEMAIL'
+          MQTT: '#/components/schemas/ActionUpdateRequestMQTT'
+          SMS: '#/components/schemas/ActionUpdateRequestSMS'
+          TELEGRAM: '#/components/schemas/ActionUpdateRequestTELEGRAM'
+          VOICE: '#/components/schemas/ActionUpdateRequestVOICE'
+          WEBHOOK: '#/components/schemas/ActionUpdateRequestWEBHOOK'
+      oneOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestEMAIL'
+        - $ref: '#/components/schemas/ActionUpdateRequestMQTT'
+        - $ref: '#/components/schemas/ActionUpdateRequestSMS'
+        - $ref: '#/components/schemas/ActionUpdateRequestTELEGRAM'
+        - $ref: '#/components/schemas/ActionUpdateRequestVOICE'
+        - $ref: '#/components/schemas/ActionUpdateRequestWEBHOOK'
+    ActionUpdateRequestBase:
+      type: object
+      description: Base object for all Action types
+      required:
+        - type
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/ActionType'
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/EmailConfig'
+            - $ref: '#/components/schemas/MQTTConfig'
+            - $ref: '#/components/schemas/TelegramConfig'
+            - $ref: '#/components/schemas/WebhookConfig'
+            - $ref: '#/components/schemas/SMSConfig'
+            - $ref: '#/components/schemas/VoiceConfig'
+        enableStatus:
+          type: boolean
+        batchEnabled:
+          type: boolean
+          description: Whether batching is enabled for this action
+        batchSize:
+          type: integer
+          description: Maximum number of messages to batch before sending
+        batchTimeoutSeconds:
+          type: integer
+          description: Maximum time in seconds to wait before sending a batch
+        maxRetries:
+          type: integer
+          description: Maximum number of retry attempts for failed action executions
+          default: 3
+        retryDelaySeconds:
+          type: integer
+          description: Delay in seconds between retry attempts (base delay for exponential backoff)
+          default: 5
+        maxRetryDelaySeconds:
+          type: integer
+          description: Maximum delay in seconds between retry attempts (caps exponential backoff)
+          default: 60
+        templateId:
+          type: string
+          description: ID of the template to assign to this action
+      example:
+        type: "EMAIL"
+        enableStatus: false
+    ActionCreateRequestBase:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          required:
+            - name
+            - enableStatus
+      example:
+        name: "My Email Action"
+        type: "EMAIL"
+        enableStatus: true
+        config:
+          Config:
+            Hostname: "smtp.server.com"
+            Port: "587"
+            Username: "smtp_user"
+            Password: "smtp_pass"
+            From: "sender@server.com"
+          Receivers: ["recipient@domain.com"]
+          Subject: "Email Subject"
+        batchEnabled: false
+    ActionCreateRequestEMAIL:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/EmailConfig'
+    ActionUpdateRequestEMAIL:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/EmailConfig'
+    ActionCreateRequestMQTT:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/MQTTConfig'
+    ActionUpdateRequestMQTT:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/MQTTConfig'
+    ActionCreateRequestSMS:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/SMSConfig'
+    ActionUpdateRequestSMS:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/SMSConfig'
+    ActionCreateRequestTELEGRAM:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/TelegramConfig'
+    ActionUpdateRequestTELEGRAM:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/TelegramConfig'
+    ActionCreateRequestVOICE:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/VoiceConfig'
+    ActionUpdateRequestVOICE:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/VoiceConfig'
+    ActionCreateRequestWEBHOOK:
+      allOf:
+        - $ref: '#/components/schemas/ActionCreateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/WebhookConfig'
+    ActionUpdateRequestWEBHOOK:
+      allOf:
+        - $ref: '#/components/schemas/ActionUpdateRequestBase'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/WebhookConfig'
+    Condition:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        conditionsOf:
+          type: array
+          items:
+            type: string
+        severities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Severity'
+        tsCreated:
+          type: string
+        tsModified:
+          type: string
+        userCreated:
+          type: string
+        userModified:
+          type: string
+    Severity:
+      type: string
+      enum:
+        - CRITICAL
+        - HIGH
+        - MEDIUM
+        - LOW
+    SourceType:
+      type: string
+      description: Type of source system
+      enum:
+        - opcuaNodeId
+        - messageBus
+        - edgexDevice
+        - edgexProfile
+        - sparkplug
+    ConditionCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        conditionsOf:
+          type: array
+          items:
+            type: string
+        severities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Severity'
+    ConditionUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        conditionsOf:
+          type: array
+          items:
+            type: string
+        severities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Severity'
+    ConditionResponse:
+      type: object
+      properties:
+        condition:
+          $ref: '#/components/schemas/Condition'
+    ActionResponse:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/Action'
+    TemplateResponse:
+      type: object
+      properties:
+        template:
+          $ref: '#/components/schemas/Template'
+    RouteResponse:
+      type: object
+      properties:
+        route:
+          $ref: '#/components/schemas/Route'
+    ConditionsResponse:
+      type: object
+      properties:
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    ActionsResponse:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    RoutesResponse:
+      type: object
+      properties:
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    Metadata:
+      type: object
+      properties:
+        count:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+    Status:
+      type: object
+      properties:
+        error:
+          type: string
+    ConfigSource:
+      type: object
+      required:
+        - configName
+        - source
+      properties:
+        configName:
+          type: string
+          description: Unique name for the alarm configuration to associate
+        source:
+          $ref: '#/components/schemas/Source'
+      example:
+        configName: "HighPressureAlarm"
+        source:
+          sourceType: "edgexDevice"
+          device: "Controller-0"
+          resource: "AirPressure"
+    Source:
+      type: object
+      description: Represents a source for an alarm (OPC-UA node ID, Message bus source, EdgeX device, EdgeX profile, sparkplug metric)
+      discriminator:
+        propertyName: sourceType
+        mapping:
+          opcuaNodeId: '#/components/schemas/OpcuaNodeIdSource'
+          messageBus: '#/components/schemas/MessageBusSource'
+          edgexDevice: '#/components/schemas/EdgexDeviceSource'
+          edgexProfile: '#/components/schemas/EdgexProfileSource'
+          sparkplug: '#/components/schemas/SparkplugSource'
+      oneOf:
+        - $ref: '#/components/schemas/OpcuaNodeIdSource'
+        - $ref: '#/components/schemas/MessageBusSource'
+        - $ref: '#/components/schemas/EdgexDeviceSource'
+        - $ref: '#/components/schemas/EdgexProfileSource'
+        - $ref: '#/components/schemas/SparkplugSource'
+    OpcuaNodeIdSource:
+      type: object
+      required:
+        - sourceType
+        - noded
+      properties:
+        sourceType:
+          type: string
+          enum: [ opcuaNodeId ]
+          description: Discriminator field to identify the source type
+        nodeid:
+          type: string
+      example:
+        sourceType: "opcuaNodeId"
+        nodeId: "ns=1;i=12345"
+    MessageBusSource:
+      type: object
+      required:
+        - sourceType
+        - messageBusSourceName
+      properties:
+        sourceType:
+          type: string
+          enum: [ messageBus ]
+          description: Discriminator field to identify the source type
+        messageBusSourceName:
+          type: string
+          description: Name of the message bus source
+      example:
+        sourceType: "messageBus"
+        messageBusSourceName: "MyMQTTSource"
+    EdgexDeviceSource:
+      type: object
+      required:
+        - sourceType
+        - device
+        - resource
+      properties:
+        sourceType:
+          type: string
+          enum: [ edgexDevice ]
+          description: Discriminator field to identify the source type
+        device:
+          type: string
+          description: Name of the device
+        resource:
+          type: string
+          description: Name of the resource
+      example:
+        sourceType: "edgexDevice"
+        device: "Controller-0"
+        resource: "AirPressure"
+    EdgexProfileSource:
+      type: object
+      required:
+        - sourceType
+        - profile
+        - resource
+      properties:
+        sourceType:
+          type: string
+          enum: [ edgexProfile ]
+          description: Discriminator field to identify the source type
+        profile:
+          type: string
+          description: Name of the profile
+        resource:
+          type: string
+          description: Name of the resource
+      example:
+        sourceType: "edgexProfile"
+        profile: "Controller"
+        resource: "Temperature"
+    SparkplugSource:
+      type: object
+      required:
+        - sourceType
+        - data
+      properties:
+        sourceType:
+          type: string
+          enum: [ sparkplug ]
+          description: Discriminator field to identify the source type
+        data:
+          type: string
+          description: TBD
+      example:
+        sourceType: "sparkplug"
+        data: "foobar"
+    AlarmInstance:
+      type: object
+      required:
+        - id
+        - source
+        - alarms
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the Alarm association
+        source:
+          $ref: '#/components/schemas/Source'
+        alarmsConfigs:
+          type: array
+          items:
+            type: string
+          description: List of alarm configuration names applied to this source
+      example:
+        id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        source: {
+          "sourceType": "messageBus",
+          "messageBusSourceName": "MyMQTTSource"
+        }
+        alarmsConfigs: [ "HighPressureAlarm", "PressureDeviationAlarm" ]
+    PingResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          description: Outputs the current server timestamp in Unix Time format
+        serviceName:
+          type: string
+          description: Outputs the name of the service the response is from
+    MessagebusSourceData:
+      type: object
+      required:
+        - messageBusSourceName
+      properties:
+        messageBusSourceName:
+          type: string
+          description: Name of the message bus source
+    OPCUANodeidData:
+      type: object
+      required:
+        - messageBusSourceName
+      properties:
+        nodeid:
+          type: string
+          description: OPCUA nodeid
+    AlarmConfigurationType:
+      type: string
+      enum:
+        - Level
+        - RateOfChange
+        - Deviation
+        - Discrete
+      description: The type of alarm configuration
+    TimeUnit:
+      type: string
+      enum:
+        - MS
+        - S
+        - M
+        - H
+      default: S
+      description: Time unit for rate calculations (MS=Milliseconds, S=Seconds, M=Minutes, H=Hours)
+    # Base Configuration Options
+    BaseAlarmConfigurationOptions:
+      type: object
+      properties:
+        description:
+          type: string
+          description: The description of the alarm
+        severityActive:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 65535
+          description: The severity value of the alarm when the alarm enters its active state
+        activeMessage:
+          type: string
+          description: The active message of the alarm
+        latching:
+          type: boolean
+          default: false
+          description: Configure the alarm to be latching
+        suppressible:
+          type: boolean
+          default: false
+          description: Configure the alarm to be able to be suppressed
+        serviceable:
+          type: boolean
+          default: false
+          description: Configure the alarm to be able to be placed in service
+        shelvable:
+          type: boolean
+          default: false
+          description: Configure the alarm to be able to be shelved
+        maxTimeShelved:
+          type: number
+          format: double
+          description: Set the maximum time that an alarm can be shelved
+        onDelay:
+          type: number
+          format: double
+          description: Prevent the alarm from being triggered until the signal remains in the alarm state continuously for a specified length of time
+        offDelay:
+          type: number
+          format: double
+          description: Locks the alarm indication for a certain holding period after the condition has returned to normal
+        reAlarmTime:
+          type: number
+          format: double
+          description: Set the time after which the alarm will regenerate if it has not returned to normal
+        requireAckOnActive:
+          type: boolean
+          default: false
+          description: When the alarm enters an active state, require an acknowledgement
+        requireAckOnInactive:
+          type: boolean
+          default: false
+          description: When the alarm enters an inactive state, require an acknowledgement
+        requireConfirmOnActiveAcked:
+          type: boolean
+          default: false
+          description: Require a confirmation after an acknowledgement on an alarm that has entered an active state
+        autoAckOnInactive:
+          type: boolean
+          description: When an alarm enters an inactive state, automatically acknowledge the alarm
+        canBranch:
+          type: boolean
+          description: Can the alarm maintain previous states
+        type:
+          type: string
+    # Discrete Alarm Options
+    DiscreteAlarmConfigurationOptions:
+      allOf:
+        - $ref: '#/components/schemas/BaseAlarmConfigurationOptions'
+        - type: object
+          required:
+            - comparisonValue
+          properties:
+            offNormal:
+              type: boolean
+              default: false
+              description: If False the alarm is active as long as the input value equals the comparisonValue. If True the alarm is active as long as the input value does not equal the comparisonValue
+            comparisonValue:
+              description: The value that the input value to the alarm is evaluated against
+              oneOf:
+                - type: boolean
+                - type: number
+                - type: string
+    # Limit-based Alarm Options (Level, RateOfChange, Deviation)
+    LimitAlarmConfigurationOptions:
+      allOf:
+        - $ref: '#/components/schemas/BaseAlarmConfigurationOptions'
+        - type: object
+          properties:
+            lowLowLimit:
+              type: number
+              format: double
+              description: The low low limit
+            lowLimit:
+              type: number
+              format: double
+              description: The low limit
+            highLimit:
+              type: number
+              format: double
+              description: The high limit
+            highHighLimit:
+              type: number
+              format: double
+              description: The high high limit
+            lowLowDeadband:
+              type: number
+              format: double
+              description: The low low limit deadband
+            lowDeadband:
+              type: number
+              format: double
+              description: The low limit deadband
+            highDeadband:
+              type: number
+              format: double
+              description: The high limit deadband
+            highHighDeadband:
+              type: number
+              format: double
+              description: The high high limit deadband
+            severityLowLow:
+              type: integer
+              format: int16
+              description: The severity of the alarm when the low low limit is reached
+            severityLow:
+              type: integer
+              format: int16
+              description: The severity of the alarm when the low limit is reached
+            severityHigh:
+              type: integer
+              format: int16
+              description: The severity of the alarm when the high limit is reached
+            severityHighHigh:
+              type: integer
+              format: int16
+              description: The severity of the alarm when the high high limit is reached
+    # Rate of Change specific options
+    RateOfChangeAlarmConfigurationOptions:
+      allOf:
+        - $ref: '#/components/schemas/LimitAlarmConfigurationOptions'
+        - type: object
+          properties:
+            timeUnit:
+              $ref: '#/components/schemas/TimeUnit'
+    # Deviation specific options
+    DeviationAlarmConfigurationOptions:
+      allOf:
+        - $ref: '#/components/schemas/LimitAlarmConfigurationOptions'
+        - type: object
+          required:
+            - setpoint
+          properties:
+            setpoint:
+              type: number
+              format: double
+              description: The setpoint from which the deviation value is calculated
+    AlarmConfigurationConfig:
+      oneOf:
+        - $ref: '#/components/schemas/DiscreteAlarmConfigurationOptions'
+        - $ref: '#/components/schemas/LimitAlarmConfigurationOptions'
+        - $ref: '#/components/schemas/RateOfChangeAlarmConfigurationOptions'
+        - $ref: '#/components/schemas/DeviationAlarmConfigurationOptions'
+    # Main Alarm Configuration
+    AlarmConfiguration:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/AlarmConfigurationConfig'
+        type:
+          $ref: '#/components/schemas/AlarmConfigurationType'
+    AlarmConfigurationWithName:
+      allOf:
+        - $ref: '#/components/schemas/AlarmConfiguration'
+        - type: object
+          properties:
+            name:
+              type: string
+              description: The unique name of the alarm configuration
+    TestAlarmRequest:
+      type: object
+      required:
+        - severity
+        - device
+        - resource
+      properties:
+        severity:
+          $ref: '#/components/schemas/Severity'
+          description: Severity level of the test alarm
+        device:
+          type: string
+          description: Device name for the test alarm
+        resource:
+          type: string
+          description: Resource name for the test alarm
+        message:
+          type: string
+          description: Optional message for the test alarm
+        timestamp:
+          type: integer
+          description: Optional timestamp for the test alarm (Unix timestamp in milliseconds)
+    TemplatesResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Template'
+        metadata:
+          type: object
+          properties:
+            count:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    Template:
+      type: object
+      description: Represents a message template
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ActionType'
+        isDefault:
+          type: boolean
+          description: Whether this template is the default template
+        content:
+          type: string
+          description: Content of the template
+        tsCreated:
+          type: string
+          description: Creation timestamp
+        tsModified:
+          type: string
+          description: Last modification timestamp
+    TemplateCreateRequest:
+      type: object
+      required:
+        - name
+        - type
+        - content
+      properties:
+        name:
+          type: string
+          description: Name of the template
+        type:
+          $ref: '#/components/schemas/ActionType'
+        content:
+          type: string
+          description: Content of the template
+    TemplateUpdateRequest:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - content
+      properties:
+        id:
+          type: string
+          description: ID of the template
+        name:
+          type: string
+          description: Name of the template
+        type:
+          $ref: '#/components/schemas/ActionType'
+        content:
+          type: string
+          description: Content of the template
+    TaskHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the history entry
+        status:
+          type: string
+          enum:
+            - scheduled
+            - pending
+            - processing
+            - completed
+            - failed
+            - cancelled
+          description: Task status at the time of this history entry
+        workerId:
+          type: string
+          nullable: true
+          description: ID of the worker that processed this task
+        errorMessage:
+          type: string
+          nullable: true
+          description: Error message if the task failed
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when this history entry was created
+        task:
+          $ref: '#/components/schemas/TaskSummary'
+    TaskSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Task ID
+        type:
+          type: string
+          description: Task type
+        priority:
+          type: string
+          enum:
+            - critical
+            - high
+            - medium
+            - low
+          description: Task priority
+        scheduledTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the task was scheduled to run
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the task started processing
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the task finished processing
+    TaskHistoryResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskHistoryEntry'
+        pagination:
+          type: object
+          properties:
+            offset:
+              type: integer
+              description: Current offset in the result set
+            limit:
+              type: integer
+              description: Maximum number of items per page
+            count:
+              type: integer
+              description: Number of items in current page
+            total:
+              type: integer
+              description: Total number of items available

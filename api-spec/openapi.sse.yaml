@@ -1,0 +1,306 @@
+openapi: 3.0.0
+info:
+  title: Alarm Management API
+  description: API for managing and routing alarms
+  version: 3.0.0
+  contact:
+    name: iotechsys
+    email: support@iotechsys.com
+servers:
+  - url: http://localhost:59893/sseapi/v3
+    description: URL for local development and testing
+tags:
+  - name: alarms
+    description: Alarm management operations
+  - name: states
+    description: State management operations
+  - name: stategroups
+    description: State group operations
+paths:
+  /alarms:
+    get:
+      tags:
+        - alarms
+      summary: Subscribe to alarm instance events
+      description: |
+        Subscribe to real-time alarm instance updates using Server-Sent Events (SSE).
+        This endpoint streams events when alarm instances are added or removed from the OPC-UA server.
+        Each event contains the full alarm information including ID, configuration name, source details, and timestamps.
+      responses:
+        '200':
+          description: Successful connection to SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                description: Server-Sent Events stream of alarm instance updates
+                properties:
+                  eventType:
+                    type: string
+                    enum: [added, removed]
+                    description: Type of event - 'added' when alarm instance is created, 'removed' when alarm instance is deleted
+                  alarm:
+                    type: object
+                    description: Alarm instance data (present for both added and removed events)
+                    properties:
+                      id:
+                        type: string
+                        description: Unique identifier of the alarm instance
+                      alarmConfigName:
+                        type: string
+                        description: Name of the alarm configuration associated with this instance
+                      sourceType:
+                        type: string
+                        enum: [edgexDevice, edgexProfile, edgeConnectDevice, edgeConnectProfile, opcuaNodeid, messageBus, Node]
+                        description: Type of source system
+                      source:
+                        type: object
+                        description: Source details including device name, resource name, source name, and description
+                        properties:
+                          deviceName:
+                            type: string
+                          resourceName:
+                            type: string
+                          sourceName:
+                            type: string
+                          description:
+                            type: string
+                      tsCreated:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp (RFC3339 format)
+                      tsModified:
+                        type: string
+                        format: date-time
+                        description: Last modification timestamp (RFC3339 format)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /states:
+    get:
+      tags:
+        - states
+      summary: Subscribe to state events
+      description: Subscribe to real-time state updates using Server-Sent Events (SSE)
+      responses:
+        '200':
+          description: Successful connection to SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream of state updates
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /stategroups:
+    get:
+      tags:
+        - stategroups
+      summary: Subscribe to state group events
+      description: Subscribe to real-time state group updates using Server-Sent Events (SSE)
+      responses:
+        '200':
+          description: Successful connection to SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream of state group updates
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    alarmsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort alarms by. Use prefix '-' for descending order.
+        Example: 'device' for ascending, '-device' for descending.
+
+        Available fields:
+        * device
+        * applicationType
+        * description
+        * group
+        * tsCreated
+        * tsModified
+      examples:
+        ascDevice:
+          value: device
+          summary: Sort by device name ascending
+        descDevice:
+          value: -device
+          summary: Sort by device name descending
+        ascType:
+          value: applicationType
+          summary: Sort by application type ascending
+    statesSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort states by. Use prefix '-' for descending order.
+        Example: 'severity' for ascending, '-severity' for descending.
+
+        Available fields:
+        * severity
+        * comment
+        * retain
+        * acked
+        * confirmed
+        * active
+        * suppressed
+        * shelved
+        * outOfService
+        * latched
+        * timestamp
+        * routed
+        * userId
+        * status
+        * tsCreated
+      examples:
+        ascSeverity:
+          value: severity
+          summary: Sort by severity ascending
+        descTimestamp:
+          value: -timestamp
+          summary: Sort by timestamp descending
+    stateGroupsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort state groups by. Use prefix '-' for descending order.
+
+        Available fields:
+        * tsCreated
+        * tsModified
+      examples:
+        ascCreated:
+          value: tsCreated
+          summary: Sort by creation time ascending
+    conditionsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort conditions by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+    actionsSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort actions by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * description
+        * type
+        * enableStatus
+        * stopConditionType
+        * duration
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+        descType:
+          value: -type
+          summary: Sort by action type descending
+    routesSortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+      description: |
+        Field to sort routes by. Use prefix '-' for descending order.
+
+        Available fields:
+        * name
+        * description
+        * delay
+        * retries
+        * enableStatus
+        * tsCreated
+        * tsModified
+      examples:
+        ascName:
+          value: name
+          summary: Sort by name ascending
+        descDelay:
+          value: -delay
+          summary: Sort by delay descending
+    alarmId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the alarm
+    stateId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the state
+  responses:
+    Unauthorized:
+      description: Authentication credentials are missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Not enough permissions to perform the requested operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error occurred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          example: v3
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
