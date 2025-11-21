@@ -41,6 +41,7 @@ services:
       - MESSAGEBUS_SOURCES_DIR=/deployment/sources
       - WRITABLE_LOGLEVEL=INFO
       - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
+      - ALARM_ENABLE_DEFAULT_INSECURE_AES_KEY=true
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
 
