@@ -17,32 +17,39 @@ volumes:
 networks:
   edgex-network:
     driver: "bridge"
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
 
 services:
 
-  alarm-service:
-    image: ${ALARM_SERVICE_IMAGE}
-    hostname: alarm-service
-    container_name: alarm-service 
-    ports:
-      - 59893:59893
-      - 4840:4840
-    restart: always
-    depends_on:
-      - database 
-    networks:
-      - edgex-network
-    volumes:
-     - alarm-service-data:/data/
-     - ${PWD}/licenses:/edgecentral/licenses/
-     - ${PWD}/deployment/:/deployment
-    environment:
-      - ALARM_CONFIGS_DIR=/deployment/alarms
-      - MESSAGEBUS_SOURCES_DIR=/deployment/sources
-      - WRITABLE_LOGLEVEL=INFO
-      - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
-      #- DISABLE_API=1
-      #- DISABLE_ALARM_SERVER=1
+  # alarm-service:
+  #   image: ${ALARM_SERVICE_IMAGE}
+  #   hostname: alarm-service
+  #   container_name: alarm-service
+  #   ports:
+  #     - 59893:59893
+  #     - 4840:4840
+  #   restart: always
+  #   depends_on:
+  #     - database
+  #   networks:
+  #     - edgex-network
+  #   volumes:
+  #    - alarm-service-data:/data/
+  #   #  - ${PWD}/licenses:/edgecentral/licenses/
+  #    - /home/sam/licenses/IoTech_111_Evaluation.lic:/edgecentral/licenses/Xrt_License.lic:ro
+  #    - ${PWD}/deployment/:/deployment
+  #   environment:
+  #     - ALARM_CONFIGS_DIR=/deployment/alarms
+  #     - MESSAGEBUS_SOURCES_DIR=/deployment/sources
+  #     - WRITABLE_LOGLEVEL=INFO
+  #     - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
+  #     - ALARM_ENABLE_DEFAULT_INSECURE_AES_KEY=false
+  #     - ALARM_AES_KEY=Tsd97NqBfxqG8WhvXLEeYoRcpUBZLwNh
+  #     - XRT_LICENSE_FILE=/licenses/Xrt_License.lic
+  #     #- DISABLE_API=1
+  #     #- DISABLE_ALARM_SERVER=1
 
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
@@ -296,7 +303,8 @@ services:
     hostname: edgex-core-metadata
     image: nexus3.edgexfoundry.org:10004/core-metadata:latest
     networks:
-      edgex-network: null
+      edgex-network:
+        ipv4_address: 172.21.0.10
     ports:
       - mode: ingress
         host_ip: 127.0.0.1
@@ -326,6 +334,7 @@ services:
       edgex-network:
         aliases:
           - postgres 
+        ipv4_address: 172.21.0.11
     ports:
       - mode: ingress
         host_ip: 127.0.0.1
@@ -401,7 +410,8 @@ services:
     hostname: edgex-mqtt-broker
     image: eclipse-mosquitto:2.0
     networks:
-      edgex-network: null
+      edgex-network:
+        ipv4_address: 172.21.0.22
     ports:
       - mode: ingress
         host_ip: 127.0.0.1
