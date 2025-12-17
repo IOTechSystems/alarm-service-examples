@@ -16,9 +16,6 @@
       "config" : {
         "severityActive" : 999,
         "activeMessage" : "Ekuiper Alarm!",
-        "requireAckOnActive" : true,
-        "requireConfirmOnActiveAcked" : true,
-        "latching" : true,
         "offNormal" : true,
         "comparisonValue" : false
             } 
