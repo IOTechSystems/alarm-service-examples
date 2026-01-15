@@ -45,6 +45,35 @@ services:
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
 
+  virtual:
+    image: iotechsys/xrt:flu-3.3.4
+    hostname: virtual
+    container_name: xrt-virtual
+    volumes:
+      - ${PWD}/deployment-virtual:/opt/iotech/xrt/3.3/deployment
+      # - /licensepath.lic:/opt/iotech/xrt/3.3/deployment/Xrt_license.lic
+    environment:
+      - XRT_STATE_DIR=/opt/iotech/xrt/3.3/deployment/state
+      - XRT_LICENSE_FILE=/opt/iotech/xrt/3.3/deployment/Xrt_license.lic
+      - XRT_DIR=/opt/iotech/xrt/3.3
+      - MESSAGEBUS_HOST=mqtt-broker
+      - WRITABLE_LOGLEVEL=INFO
+      - SPARKPLUG_NODE=xrt
+      - SPARKPLUG_GROUP=iotech
+      - SPARKPLUG_PROTO=spb
+      - SPARKPLUG_APPS=""
+    networks:
+      - edgex-network
+    depends_on:
+      - database
+
+  sparkplug-client:
+    hostname: sparkplug-client
+    container_name: sparkplug-client
+    network_mode: host
+    image: iotechsys/sparkplug-client:3.0.1
+    command: sub --webui --webui-port 9090 -h localhost -t "spBv1.0/#"
+
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
     container_name: controller-0 
