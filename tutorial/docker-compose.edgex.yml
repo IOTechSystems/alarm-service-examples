@@ -42,6 +42,10 @@ services:
       - WRITABLE_LOGLEVEL=INFO
       - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
       - ALARM_ENABLE_DEFAULT_INSECURE_AES_KEY=true
+      - SPARKPLUG_NODE=xrt
+      - SPARKPLUG_GROUP=iotech
+      - SPARKPLUG_PROTO=spb
+      - SPARKPLUG_APPS=""
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
 
