@@ -1,0 +1,30 @@
+{
+  "alarmConfigs" : {
+    "IntDeviationAlarm" : {
+        "type" : "Deviation", 
+        "config" : {
+          "setpoint" : 80,
+          "highHighLimit" : 10,
+          "highLimit" : 5,
+          "lowLimit" : -5,
+          "lowLowLimit" : -10,
+          "severityHigh" : 400,
+          "severityHighHigh" : 800,
+          "severityLow" : 200,
+          "severityLowLow" : 300,
+          "requireAckOnActive" : true,
+          "autoAckOnInactive" : true
+        } 
+    }
+  },
+  "sourceAssociations" : [
+    {
+      "source" : {
+        "sparkplugNodeId": "xrt", 
+        "sparkplugDeviceName": "Virtual-Device",
+        "sparkplugMetricName": "StoreInt32Value"
+      }, 
+      "alarms" : ["TemperatureDeviationAlarm"]
+    }
+  ]
+}
