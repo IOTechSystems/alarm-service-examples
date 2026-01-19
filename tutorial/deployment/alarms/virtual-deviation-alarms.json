@@ -24,7 +24,7 @@
         "sparkplugDeviceName": "Virtual-Device",
         "sparkplugMetricName": "StoreInt32Value"
       }, 
-      "alarms" : ["TemperatureDeviationAlarm"]
+      "alarms" : ["IntDeviationAlarm"]
     }
   ]
 }
