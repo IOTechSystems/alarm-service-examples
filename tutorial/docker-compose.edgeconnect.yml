@@ -49,7 +49,7 @@ services:
     hostname: virtual
     container_name: xrt-virtual
     volumes:
-      - ${PWD}/deployment-virtual:/opt/iotech/xrt/3.3/deployment
+      - ${PWD}/edgeconnect-virtual:/opt/iotech/xrt/3.3/deployment
       # - /licensepath.lic:/opt/iotech/xrt/3.3/deployment/Xrt_license.lic
     environment:
       - XRT_STATE_DIR=/opt/iotech/xrt/3.3/deployment/state
