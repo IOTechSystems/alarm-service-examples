@@ -48,5 +48,5 @@
   "QueueSize": 5,
   "Priority": 0,
   "Bus": "06-bus",
-  "Logger": "11-logger_debug"
+  "Logger": "02-logger"
 }

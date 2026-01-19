@@ -8,6 +8,5 @@
   "07-mqtt": "XRT::MQTTBridge",
   "08-sparkplug": "XRT::Sparkplug",
   "09-sparkplug-node": "XRT::SparkplugNode",
-  "10-virtual":"XRT::VirtualDeviceService",
-  "11-logger_debug":"IOT::Logger"
+  "10-virtual":"XRT::VirtualDeviceService"
 }
