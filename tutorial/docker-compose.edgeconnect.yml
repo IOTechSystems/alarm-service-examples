@@ -1,0 +1,131 @@
+name: edgeconnect
+
+volumes:
+  alarm-service-data:
+    name: edgeconnect_alarms-service-data
+  db-data:
+    name: edgeconnect_db-data
+
+networks:
+  edgeconnect-network:
+    driver: "bridge"
+
+services:
+
+  alarm-service:
+    image: ${ALARM_SERVICE_IMAGE}
+    hostname: alarm-service
+    container_name: alarm-service 
+    ports:
+      - 59893:59893
+      - 4840:4840
+    restart: always
+    depends_on:
+      - database 
+    networks:
+      - edgeconnect-network
+    volumes:
+     - alarm-service-data:/data/
+     - ${PWD}/licenses:/edgecentral/licenses/
+     - ${PWD}/deployment/:/deployment
+    environment:
+      - ALARM_CONFIGS_DIR=/deployment/alarms
+      - MESSAGEBUS_SOURCES_DIR=/deployment/sources
+      - WRITABLE_LOGLEVEL=INFO
+      - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
+      - ALARM_ENABLE_DEFAULT_INSECURE_AES_KEY=true
+      - SPARKPLUG_NODE=xrt
+      - SPARKPLUG_GROUP=iotech
+      - SPARKPLUG_PROTO=spb
+      - SPARKPLUG_APPS=""
+      - OPCUA_CORE_METADATA_ADDRESS=
+      - ALARM_POSTGRES_DB_NAME=edgeconnect_db
+      - ALARM_POSTGRES_ADDRESS=edgeconnect-postgres
+      #- DISABLE_API=1
+      #- DISABLE_ALARM_SERVER=1
+
+  virtual:
+    image: iotechsys/xrt:flu-3.3.4
+    hostname: virtual
+    container_name: xrt-virtual
+    volumes:
+      - ${PWD}/edgeconnect-virtual:/opt/iotech/xrt/3.3/deployment
+      # - /licensepath.lic:/opt/iotech/xrt/3.3/deployment/Xrt_license.lic
+    environment:
+      - XRT_STATE_DIR=/opt/iotech/xrt/3.3/deployment/state
+      - XRT_LICENSE_FILE=/opt/iotech/xrt/3.3/deployment/Xrt_license.lic
+      - XRT_DIR=/opt/iotech/xrt/3.3
+      - MESSAGEBUS_HOST=mqtt-broker
+      - WRITABLE_LOGLEVEL=INFO
+      - SPARKPLUG_NODE=xrt
+      - SPARKPLUG_GROUP=iotech
+      - SPARKPLUG_PROTO=spb
+      - SPARKPLUG_APPS=""
+    networks:
+      - edgeconnect-network
+    depends_on:
+      - database
+
+  sparkplug-client:
+    hostname: sparkplug-client
+    container_name: sparkplug-client
+    network_mode: host
+    image: iotechsys/sparkplug-client:3.0.1
+    command: sub --webui --webui-port 9090 -h localhost -t "spBv1.0/#"
+
+  database:
+    container_name: edgeconnect-postgres
+    environment:
+      POSTGRES_DB: edgeconnect_db
+      POSTGRES_PASSWORD: postgres
+    hostname: edgeconnect-postgres
+    image: postgres:16.3-alpine3.20
+    networks:
+      edgeconnect-network:
+        aliases:
+          - postgres 
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 5432
+        published: "5432"
+        protocol: tcp
+    read_only: true
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /run
+    volumes:
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: db-data
+        target: /var/lib/postgresql/data
+        volume: {}
+
+  mqtt-broker:
+    command:
+      - /usr/sbin/mosquitto
+      - -c
+      - /mosquitto-no-auth.conf
+    container_name: edgeconnect-mqtt-broker
+    hostname: edgeconnect-mqtt-broker
+    image: eclipse-mosquitto:2.0
+    networks:
+      edgeconnect-network: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 1883
+        published: "1883"
+        protocol: tcp
+    read_only: true
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    user: 2002:2001
