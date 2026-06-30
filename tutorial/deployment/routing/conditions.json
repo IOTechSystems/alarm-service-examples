@@ -1,0 +1,18 @@
+{
+    "conditions": [
+        {
+            "name": "High Condition",
+            "conditionsOf": [
+                "AirPressure",
+                "WaterTemperature"
+            ],
+            "severities": [
+                "HIGH"
+            ],
+            "stateFilters": {
+                "skipAcknowledged": false,
+                "skipUnsuppressed": true
+            }
+        }
+    ]
+}

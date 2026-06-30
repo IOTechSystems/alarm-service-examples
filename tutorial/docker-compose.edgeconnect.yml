@@ -43,6 +43,10 @@ services:
       - ALARM_POSTGRES_ADDRESS=edgeconnect-postgres
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
+      - ALARM_STATIC_ROUTING_ENABLED=true
+      - ALARM_STATIC_ROUTING_CONDITIONS_PATH=/deployment/routing/conditions.json
+      - ALARM_STATIC_ROUTING_ACTIONS_PATH=/deployment/routing/actions.json
+      - ALARM_STATIC_ROUTING_ROUTES_PATH=/deployment/routing/routes.json
 
   smtp_server:
     container_name: smtp_server
