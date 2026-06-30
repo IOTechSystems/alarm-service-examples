@@ -44,6 +44,16 @@ services:
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
 
+  smtp_server:
+    container_name: smtp_server
+    image: gessnerfl/fake-smtp-server
+    restart: unless-stopped
+    ports:
+      - 8025:8025 # smtp
+      - 8080:8080 # webui
+    networks:
+      - edgeconnect-network
+
   virtual:
     image: iotechsys/xrt:flu-3.3.4
     hostname: virtual

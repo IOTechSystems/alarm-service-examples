@@ -25,6 +25,14 @@ services:
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
 
+  smtp_server:
+    container_name: smtp_server
+    image: gessnerfl/fake-smtp-server
+    restart: unless-stopped
+    ports:
+      - 8025:8025 # smtp
+      - 8080:8080 # webui
+
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
     container_name: controller-0 
