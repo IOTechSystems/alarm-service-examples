@@ -1,0 +1,13 @@
+{
+    "routes": [
+        {
+            "name": "Route for Critical Alarms",
+            "actionNames": [
+                "My Email Action"
+            ],
+            "conditionName": "High Condition",
+            "schedule": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20240101\r\nDTEND;VALUE=DATE:20240102\r\nRRULE:FREQ=DAILY\r\nEND:VEVENT\r\nEND:VCALENDAR",
+            "enableStatus": true
+        }
+    ]
+}

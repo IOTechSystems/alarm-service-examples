@@ -45,13 +45,13 @@ services:
     entrypoint: /edgex-init/ready_to_run_wait_install.sh
     image: ${ALARM_SERVICE_IMAGE}
     hostname: alarm-service
-    container_name: alarm-service 
+    container_name: alarm-service
     ports:
       - 59893:59893
       - 4840:4840
     restart: always
     depends_on:
-      - database 
+      - database
     networks:
       - edgex-network
     volumes:
@@ -77,13 +77,16 @@ services:
           selinux: z
           create_host_path: true
     environment:
-      ALARM_CONFIGS_DIR: /deployment/alarms 
+      ALARM_CONFIGS_DIR: /deployment/alarms
       MESSAGEBUS_SOURCES_DIR: /deployment/sources
       WRITABLE_LOGLEVEL: INFO
       MESSAGEBUS_SUB_TOPICS: ["xrt/mqtt/input"]
       #- DISABLE_API=1
       #- DISABLE_ALARM_SERVER=1
-
+      ALARM_STATIC_ROUTING_ENABLED: true
+      ALARM_STATIC_ROUTING_CONDITIONS_PATH: /deployment/routing/conditions.json
+      ALARM_STATIC_ROUTING_ACTIONS_PATH: /deployment/routing/actions.json
+      ALARM_STATIC_ROUTING_ROUTES_PATH: /deployment/routing/routes.json
       EDGEX_SECURITY_SECRET_STORE: "true"
       PROXY_SETUP_HOST: edgex-security-proxy-setup
       SECRETSTORE_HOST: edgex-secret-store
@@ -102,9 +105,19 @@ services:
       STAGEGATE_SECRETSTORESETUP_TOKENS_READYPORT: "54322"
       STAGEGATE_WAITFOR_TIMEOUT: 60s
 
+  smtp_server:
+    container_name: smtp_server
+    image: gessnerfl/fake-smtp-server
+    restart: unless-stopped
+    ports:
+      - 8025:8025 # smtp
+      - 8080:8080 # webui
+    networks:
+      - edgeconnect-network
+
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
-    container_name: controller-0 
+    container_name: controller-0
     command: --profile profiles/Controller.json --script /sim/script.py --port 5020
     networks:
       - edgex-network
@@ -117,10 +130,10 @@ services:
 
   controller-1:
     image: iotechsys/pymodbus-sim:1.0.4
-    container_name: controller-1 
+    container_name: controller-1
     command: --profile profiles/Controller.json --script /sim/script.py --port 5021
     networks:
-      - edgex-network 
+      - edgex-network
     ports:
       - "5021:5021"
     volumes:
@@ -178,7 +191,7 @@ services:
     networks:
       edgex-network:
         aliases:
-          - postgres 
+          - postgres
     ports:
       - mode: ingress
         host_ip: 127.0.0.1
@@ -741,7 +754,7 @@ services:
   mqtt-broker:
     command:
       - /usr/sbin/mosquitto
-      - -v 
+      - -v
       - -c
       - /mosquitto/config/mosquitto.conf
     container_name: edgex-mqtt-broker

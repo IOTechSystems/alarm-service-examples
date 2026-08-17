@@ -1,0 +1,20 @@
+{
+    "actions": [
+        {
+            "name": "My Email Action",
+            "enableStatus": true,
+            "type": "EMAIL",
+            "config": {
+                "Config": {
+                    "From": "test@example.com",
+                    "Port": "8025",
+                    "Hostname": "smtp_server"
+                },
+                "Subject": "Email Action",
+                "Receivers": [
+                    "rec@example.com"
+                ]
+            }
+        }
+    ]
+}
