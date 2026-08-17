@@ -11,13 +11,17 @@ networks:
 
 services:
 
+  central-ui:
+    image: iotechsys/dev-central-ui:4.0.18.dev
+
   alarm-service:
+    image: iotechsys/alarm-service:latest
     ports:
       - 4840:4840
     volumes:
      - ${PWD}/deployment/:/deployment
     environment:
-      - ALARM_CONFIGS_DIR=/deployment/alarms 
+      - ALARM_CONFIGS_DIR=/deployment/alarms
       - MESSAGEBUS_SOURCES_DIR=/deployment/sources
       - WRITABLE_LOGLEVEL=INFO
       - MESSAGEBUS_SUB_TOPICS=["xrt/mqtt/input"]
@@ -39,7 +43,7 @@ services:
 
   controller-0:
     image: iotechsys/pymodbus-sim:1.0.4
-    container_name: controller-0 
+    container_name: controller-0
     command: --profile profiles/Controller.json --script /sim/script.py --port 5020
     networks:
       - edgex-network
@@ -52,10 +56,10 @@ services:
 
   controller-1:
     image: iotechsys/pymodbus-sim:1.0.4
-    container_name: controller-1 
+    container_name: controller-1
     command: --profile profiles/Controller.json --script /sim/script.py --port 5021
     networks:
-      - edgex-network 
+      - edgex-network
     ports:
       - "5021:5021"
     volumes:

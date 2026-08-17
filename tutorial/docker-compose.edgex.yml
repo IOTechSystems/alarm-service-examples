@@ -22,6 +22,7 @@ services:
 
   alarm-service:
     image: ${ALARM_SERVICE_IMAGE}
+    platform: linux/amd64
     hostname: alarm-service
     container_name: alarm-service 
     ports:
