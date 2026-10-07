@@ -119,7 +119,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-app-rules-engine
     hostname: edgex-app-rules-engine
-    image: nexus3.edgexfoundry.org:10004/app-service-configurable:latest
+    image: edgexfoundry/app-service-configurable:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -163,7 +163,7 @@ services:
       EXTERNALMQTT_URL: tcp://edgex-mqtt-broker:1883
       SERVICE_HOST: edgex-core-command
     hostname: edgex-core-command
-    image: nexus3.edgexfoundry.org:10004/core-command:latest
+    image: edgexfoundry/core-command:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -202,7 +202,7 @@ services:
       DEVICE_SERVICES_CLIENTS_CORE_METADATA_HOST: edgex-core-metadata
       EDGEX_SECURITY_SECRET_STORE: "false"
     hostname: edgex-core-common-config-bootstrapper
-    image: nexus3.edgexfoundry.org:10004/core-common-config-bootstrapper:latest
+    image: edgexfoundry/core-common-config-bootstrapper:4.0.2
     networks:
       edgex-network: null
     read_only: true
@@ -235,7 +235,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-core-data
     hostname: edgex-core-data
-    image: nexus3.edgexfoundry.org:10004/core-data:latest
+    image: edgexfoundry/core-data:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -273,7 +273,7 @@ services:
       MESSAGEBUS_TYPE: mqtt
       SERVICE_HOST: edgex-core-keeper
     hostname: edgex-core-keeper
-    image: nexus3.edgexfoundry.org:10004/core-keeper:latest
+    image: edgexfoundry/core-keeper:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -310,7 +310,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-core-metadata
     hostname: edgex-core-metadata
-    image: nexus3.edgexfoundry.org:10004/core-metadata:latest
+    image: edgexfoundry/core-metadata:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -387,7 +387,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-device-modbus
     hostname: edgex-device-modbus
-    image: nexus3.edgexfoundry.org:10004/device-modbus:latest
+    image: edgexfoundry/device-modbus:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -512,7 +512,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-support-scheduler
     hostname: edgex-support-scheduler
-    image: nexus3.edgexfoundry.org:10004/support-scheduler:latest
+    image: edgexfoundry/support-scheduler:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -552,7 +552,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-support-notifications
     hostname: edgex-support-notifications
-    image: nexus3.edgexfoundry.org:10004/support-notifications:latest
+    image: edgexfoundry/support-notifications:4.0.2
     networks:
       edgex-network: null
     ports:
@@ -579,7 +579,7 @@ services:
       EDGEX_SECURITY_SECRET_STORE: "false"
       SERVICE_HOST: edgex-ui-go
     hostname: edgex-ui-go
-    image: nexus3.edgexfoundry.org:10004/edgex-ui:latest
+    image: edgexfoundry/edgex-ui:4.0.2
     networks:
       edgex-network: null
     ports:
