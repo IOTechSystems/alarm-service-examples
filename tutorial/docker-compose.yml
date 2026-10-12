@@ -11,9 +11,6 @@ networks:
 
 services:
 
-  central-ui:
-    image: iotechsys/dev-central-ui:4.0.18.dev
-
   alarm-service:
     image: iotechsys/alarm-service:latest
     ports:
